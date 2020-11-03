@@ -1,13 +1,10 @@
 from go.common.gotypes import *
-from go.tools import zobrist
-
 
 class Board():
     def __init__(self, num_rows, num_cols):
         self.num_rows = num_rows
         self.num_cols = num_cols
         self._grid = {}
-        self._hash = zobrist.EMPTY_BOARD
         
     def place_stone(self, player, point):
         assert self.is_on_grid(point)
@@ -36,14 +33,13 @@ class Board():
         for new_string_point in new_string.stones:
             self._grid[new_string_point] = new_string
             
-        self._hash ^= zobrist.HASH_CODE[point, player]    
+        for other_color_string in adjacent_opposite_color:
+            other_color_string.remove_liberty(point)
             
         for other_color_string in adjacent_opposite_color:
-            replacement = other_color_string.without_liberty(point)
-            if replacement.num_liberties:
-                self._replace_string(other_color_string.without_liberty(point))
-            else:
-                self._remove_string(other_color_string)                                
+            if other_color_string.num_liberties == 0:
+                self._remove_string(other_color_string)        
+                                
         
     
     def is_on_grid(self, point):
@@ -61,10 +57,6 @@ class Board():
             return None
         return string
     
-    def _replace_string(self, new_string):
-        for point in new_string.stones:
-            self._grid[point] = new_string
-    
     def _remove_string(self, string):
         for point in string.stones:
             for neighbor in point.neighbors():
@@ -72,11 +64,7 @@ class Board():
                 if neighbor_string is None:
                     continue
                 if neighbor_string is not string:
-                    self._replace_string(neighbor_string.with_liberty(point))
+                    neighbor_string.add_liberty(point)
             self._grid[point] = None
-            self._hash ^= zobrist.HASH_CODE[point, string.color]
-            
-    def zobrist_hash(self):
-        return self._hash        
                     
         
